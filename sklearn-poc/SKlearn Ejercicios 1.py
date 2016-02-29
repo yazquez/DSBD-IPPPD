@@ -18,7 +18,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.linear_model import SGDClassifier
 
 
-def repeat_fit(classificator, normalized_data, repetitions):
+def repeat_fit(classifier, normalized_data, repetitions):
     logger.write("\n\n-----------------------------------------------------------------------------------");
     logger.write(
         "Entrenando modelo durante {0} veces. Usando datos {1}.\nResultados sobre datos de Test y datos de Entrenamiento.\n".format(
@@ -27,50 +27,51 @@ def repeat_fit(classificator, normalized_data, repetitions):
     best_model = None
 
     for i in range(1, repetitions):
-        score = classificator.fit(normalized=normalized_data).score()
+        score = classifier.fit(normalized=normalized_data).score()
         if score > best_score:
             best_score = score
             best_model = i
             logger.write("Test:           ", end="")
-            classificator.print_metrics(show_extended=False)
+            classifier.print_metrics(show_extended=False)
             logger.write("Entrenamiento:  ", end="")
-            classificator.print_metrics(show_extended=False, use_train_data=True)
+            classifier.print_metrics(show_extended=False, use_train_data=True)
             logger.write("\n")
 
     return best_model
 
 
-def try_different_parametrizacion(normalized_data):
+def get_best_sgdclassifier_parametrization(normalized_data):
     logger.write("\n\n-----------------------------------------------------------------------------------")
-    logger.write("Analizando diferenctes configuraciones del clasificador SGDClassifier. Datos {}\n".format("Normalizados" if normalized_data else "Reales"))
+    logger.write("Analizando diferentes configuraciones del clasificador SGDClassifier. Datos {}\n".format("Normalizados" if normalized_data else "Reales"))
     best_score = float("-inf")
-    best_model = None
-    for i in range(len(sgd_clf)):
-        score = sgd_clf[i].fit(normalized=normalized_data).print_metrics().score()
+    best_classifier = None
+    for i, clf in enumerate(sgd_classifiers):
+        score = clf.fit(normalized=normalized_data).print_metrics().score()
         if score > best_score:
             best_score = score
-            best_model = i
+            best_classifier = clf
 
     # Imprimimos las estadisticas de la variación con score más alto
-    logger.write("\n\nLa parametrización del modelo SGDClassifier con mejores resultados ha sido:", sgd_clf[best_model].name )
+    logger.write("\n\nLa parametrización del modelo SGDClassifier con mejores resultados ha sido:", best_classifier.name)
     logger.write("Estadísticas:\n");
-    sgd_clf[best_model].print_metrics(show_extended=True)
+    best_classifier.print_metrics(show_extended=True)
 
-    return best_model
+    return best_classifier
 
 
-def try_different_classificators(normalized_data):
+def try_different_classifiers(normalized_data):
     logger.write("\n\n-----------------------------------------------------------------------------------")
     logger.write("Resultados con diferentes tipos de clasificadores.Datos {}\n".format("Normalizados" if normalized_data else "Reales"))
 
-    for i in range(len(clf)):
-        clf[i].fit(normalized=normalized_data).print_metrics()
+    for i, clf in enumerate(classifiers):
+        clf.fit(normalized=normalized_data).print_metrics()
 
+    #Dibujamos la gráfica
     figure = plt.figure(figsize=(30, 10))
     figure.canvas.set_window_title("Graficas comparativas de los distintos Clasificadores. Datos " + ("Normalizados" if normalized_data else "Reales"))
-    for i in range(10):
+    for i, clf in enumerate(classifiers):
         plt.subplot(2, 5, i + 1)
-        clf[i].draw_graph(showlegend=True, showplot=False)
+        clf.draw_graph(showlegend=True, showplot=False)
     figure.subplots_adjust(left=.02, right=.98)
     plt.show()
 
@@ -123,7 +124,7 @@ class DataContainer:
                 return self.X_test, self.y_test
 
 
-class Classificator:
+class Classifier:
     def __init__(self, classifier, data, name="Sin nombre"):
         self.classifier = classifier
         self.data = data
@@ -310,27 +311,27 @@ logger = Logger("console")
 # ----------------------------------------------------------------------------------------------------------------------
 
 # Lista con diferente variaciones del Clasificador SGDClassifier
-sgd_clf = [
-    Classificator(SGDClassifier(), data_container).set_name("Default values"),
-    Classificator(SGDClassifier(n_iter=10), data_container).set_name("n_iter=10"),
-    Classificator(SGDClassifier(fit_intercept=False), data_container).set_name("fit_intercept=False"),
-    Classificator(SGDClassifier(loss='modified_huber'), data_container).set_name("loss='modified_huber'"),
-    Classificator(SGDClassifier(penalty='l1'), data_container).set_name("penalty='l1'"),
-    Classificator(SGDClassifier(penalty='elasticnet'), data_container).set_name("penalty='elasticnet'")]
+sgd_classifiers = [
+    Classifier(SGDClassifier(), data_container).set_name("Default values"),
+    Classifier(SGDClassifier(n_iter=10), data_container).set_name("n_iter=10"),
+    Classifier(SGDClassifier(fit_intercept=False), data_container).set_name("fit_intercept=False"),
+    Classifier(SGDClassifier(loss='modified_huber'), data_container).set_name("loss='modified_huber'"),
+    Classifier(SGDClassifier(penalty='l1'), data_container).set_name("penalty='l1'"),
+    Classifier(SGDClassifier(penalty='elasticnet'), data_container).set_name("penalty='elasticnet'")]
 
 
 # Lista con diferentes tipos de clasificadores
-clf = [
-    Classificator(KNeighborsClassifier(3), data_container).set_name("Nearest Neighbors"),
-    Classificator(SVC(kernel="linear", C=0.025), data_container).set_name("Linear SVM"),
-    Classificator(SVC(gamma=2, C=1), data_container).set_name("RBF SVM"),
-    Classificator(DecisionTreeClassifier(max_depth=5), data_container).set_name("Decision Tree"),
-    Classificator(RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1), data_container).set_name("Random Forest"),
-    Classificator(AdaBoostClassifier(), data_container).set_name("AdaBoost"),
-    Classificator(GaussianNB(), data_container).set_name("Naive Bayes"),
-    Classificator(LinearDiscriminantAnalysis(), data_container).set_name("Linear Discrim. Analysis"),
-    Classificator(QuadraticDiscriminantAnalysis(), data_container).set_name("Quadratic Discrim. Analysis"),
-    Classificator(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent")]
+classifiers = [
+    Classifier(KNeighborsClassifier(3), data_container).set_name("Nearest Neighbors"),
+    Classifier(SVC(kernel="linear", C=0.025), data_container).set_name("Linear SVM"),
+    Classifier(SVC(gamma=2, C=1), data_container).set_name("RBF SVM"),
+    Classifier(DecisionTreeClassifier(max_depth=5), data_container).set_name("Decision Tree"),
+    Classifier(RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1), data_container).set_name("Random Forest"),
+    Classifier(AdaBoostClassifier(), data_container).set_name("AdaBoost"),
+    Classifier(GaussianNB(), data_container).set_name("Naive Bayes"),
+    Classifier(LinearDiscriminantAnalysis(), data_container).set_name("Linear Discrim. Analysis"),
+    Classifier(QuadraticDiscriminantAnalysis(), data_container).set_name("Quadratic Discrim. Analysis"),
+    Classifier(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent")]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -338,7 +339,7 @@ clf = [
 #    características longitud y ancho del pétalo. Representar la distribución de las características.
 #    Obtener las métricas de precisión, exactitud, ...
 
-Classificator(SGDClassifier(), data_container)\
+Classifier(SGDClassifier(), data_container)\
     .set_name("Stochastic Gradient Descent")\
     .fit(normalized=False) \
     .print_metrics(show_extended=True)\
@@ -354,7 +355,7 @@ Classificator(SGDClassifier(), data_container)\
 #   ¿ Que implica que el rendimiento sobre el test sean mejor que sobre los de entrenamiento ? ¿ y al contrario ?
 #   De todas las salidas obtenidas, ¿ cuál considerarías que es el mejor modelo ?
 
-repeat_fit(Classificator(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent"),
+repeat_fit(Classifier(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent"),
            normalized_data=False, repetitions=repetitions)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -362,32 +363,31 @@ repeat_fit(Classificator(SGDClassifier(), data_container).set_name("Stochastic G
 #    Revisar los parámetros en http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDClassifier.html
 #    e intentar manipular estos parámetros para aumentar el rendimiento del modelo anterior.
 
-best_model = try_different_parametrizacion(normalized_data=False)
+best_sgdclassifier = get_best_sgdclassifier_parametrization(normalized_data=False)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 4. Representar graficamente las líneas de clasificación del mejor clasificador obtenido
 
-sgd_clf[best_model].set_window_title("Líneas de clasificación del mejor clasificador obtenido. Datos Reales").draw_graph()
+best_sgdclassifier.set_window_title("Líneas de clasificación del mejor clasificador obtenido. Datos Reales").draw_graph()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 5. En http://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html podeis encontrar
 # una revisión de varios clasificadores. Probad algunos de ellos...
 
-
-try_different_classificators(False)
+try_different_classifiers(False)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 6. Repetir los ejercicios anteriores normalizando los datos. ¿Se aprecia alguna mejora?
 
 # 6.1 Probar difentes parametrizacions del clasificador SGDClassifier
-best_model = try_different_parametrizacion(normalized_data=True)
+best_sgdclassifier = get_best_sgdclassifier_parametrization(normalized_data=True)
 
 # 6.2 Grafica del mejor score
-sgd_clf[best_model].set_window_title("Líneas de clasificación del mejor clasificador obtenido. Datos Normalizados").draw_graph()
+best_sgdclassifier.set_window_title("Líneas de clasificación del mejor clasificador obtenido. Datos Normalizados").draw_graph()
 
 # 6.3 Repetir 10000 veces el entrenamiento
-repeat_fit(Classificator(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent"),
+repeat_fit(Classifier(SGDClassifier(), data_container).set_name("Stochastic Gradient Descent"),
            normalized_data=True, repetitions=repetitions)
 
 # 6.4 Probar diferentes clasificadores
-try_different_classificators(True)
+try_different_classifiers(True)
